@@ -1,0 +1,225 @@
+import datetime
+from tkinter import *
+import tkinter.messagebox as mb
+from tkinter import ttk
+from tkcalendar import DateEntry  # pip install tkcalendar
+import sqlite3
+
+# Creating the universal font variables
+headlabelfont = ("Noto Sans CJK TC", 15, 'bold')
+labelfont = ('Garamond', 14)
+entryfont = ('Garamond', 12)
+
+# Connecting to the Database where all information will be stored
+connector = sqlite3.connect('ClassRoomManagement.db')
+cursor = connector.cursor()
+
+connector.execute(
+"CREATE TABLE IF NOT EXISTS CLASS_ROOM_MANAGEMENT (STUDENT_ID INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, NAME TEXT, EMAIL TEXT, PHONE_NO TEXT, GENDER TEXT, DOB, DEPARTMENT TEXT, ROLL_NO, YEAR TEXT, SEMESTER TEXT)"
+)
+
+# Creating the functions
+def reset_fields():
+    global name_strvar, email_strvar, contact_strvar, gender_strvar, dob, department_strvar, roll_strvar, year_strvar, semester_strvar
+
+    for i in ['name_strvar', 'email_strvar', 'contact_strvar', 'gender_strvar', 'department_strvar', 'roll_strvar', 'year_strvar', 'semester_strvar']:
+        exec(f"{i}.set('')")
+    dob.set_date(datetime.datetime.now().date())
+
+
+def reset_form():
+    global tree
+    tree.delete(*tree.get_children())
+
+    reset_fields()
+
+
+def display_records():
+    tree.delete(*tree.get_children())
+
+    curr = connector.execute('SELECT * FROM CLASS_ROOM_MANAGEMENT')
+    data = curr.fetchall()
+
+    for records in data:
+        tree.insert('', END, values=records)
+
+
+def add_record():
+    global name_strvar, email_strvar, contact_strvar, gender_strvar, dob, department_strvar, roll_strvar, year_strvar, semester_strvar
+
+    name = name_strvar.get()
+    email = email_strvar.get()
+    contact = contact_strvar.get()
+    gender = gender_strvar.get()
+    DOB = dob.get_date()
+    department = department_strvar.get()
+    roll = roll_strvar.get()
+    year = year_strvar.get()
+    semester = semester_strvar.get()
+
+    if not name or not email or not contact or not gender or not DOB or not department or not roll or not year or not semester:
+        mb.showerror('Error!', "Please fill all the missing fields!!")
+    else:
+        try:
+            connector.execute(
+            'INSERT INTO CLASS_ROOM_MANAGEMENT (NAME, EMAIL, PHONE_NO, GENDER, DOB, DEPARTMENT, ROLL_NO, YEAR, SEMESTER) VALUES (?,?,?,?,?,?,?,?,?)', (name, email, contact, gender, DOB, department, roll, year, semester)
+            )
+            connector.commit()
+            mb.showinfo('Record added', f"Record of {name} was successfully added")
+            reset_fields()
+            display_records()
+        except:
+            mb.showerror('Wrong type', 'The type of the values entered is not accurate. Pls note that the contact field can only contain numbers')
+
+
+def remove_record():
+    if not tree.selection():
+        mb.showerror('Error!', 'Please select an item from the database')
+    else:
+        current_item = tree.focus()
+        values = tree.item(current_item)
+        selection = values["values"]
+
+        tree.delete(current_item)
+
+        connector.execute('DELETE FROM CLASS_ROOM_MANAGEMENT WHERE STUDENT_ID=%d' % selection[0])
+        connector.commit()
+
+        mb.showinfo('Done', 'The record you wanted deleted was successfully deleted.')
+
+        display_records()
+
+
+def view_record():
+    global name_strvar, email_strvar, contact_strvar, gender_strvar, dob, department_strvar, roll_strvar, year_strvar, semester_strvar
+
+    current_item = tree.focus()
+    values = tree.item(current_item)
+    selection = values["values"]
+
+    date = datetime.date(int(selection[5][:4]), int(selection[5][5:7]), int(selection[5][8:]))
+
+    name_strvar.set(selection[1]); email_strvar.set(selection[2])
+    contact_strvar.set(selection[3]); gender_strvar.set(selection[4])
+    dob.set_date(date); department_strvar.set(selection[6])
+    roll_strvar.set(selection[7]); year_strvar.set(selection[8])
+    semester_strvar.set(selection[9]);
+
+
+# Initializing the GUI window
+main = Tk()
+main.title('DataFlair Class Room Management System')
+main.geometry('1300x600')
+main.resizable(1300, 800)
+
+# Creating the background and foreground color variables
+lf_bg = 'MediumSpringGreen' # bg color for the left_frame
+cf_bg = 'LightGreen' # bg color for the center_frame
+
+# Creating the StringVar or IntVar variables
+name_strvar = StringVar()
+email_strvar = StringVar()
+contact_strvar = StringVar()
+gender_strvar = StringVar()
+department_strvar = StringVar()
+roll_strvar = StringVar()
+year_strvar = StringVar()
+semester_strvar = StringVar()
+
+# Placing the components in the main window
+Label(main, text="CLASS ROOM MANAGEMENT SYSTEM", font=headlabelfont, bg='SpringGreen').pack(side=TOP, fill=X)
+
+left_frame = Frame(main, bg=lf_bg)
+left_frame.place(x=0, y=30, relheight=1, relwidth=0.2)
+
+center_frame = Frame(main, bg=cf_bg)
+center_frame.place(relx=0.2, y=30, relheight=1, relwidth=0.2)
+
+right_frame = Frame(main, bg="Gray35")
+right_frame.place(relx=0.4, y=30, relheight=1, relwidth=0.6)
+
+# Placing components in the left frame
+Label(left_frame, text="Name", font=labelfont, bg=lf_bg).place(relx=0.375, rely=0.06)
+Label(left_frame, text="Contact Number", font=labelfont, bg=lf_bg).place(relx=0.175, rely=0.14)
+Label(left_frame, text="Email Address", font=labelfont, bg=lf_bg).place(relx=0.2, rely=0.22)
+Label(left_frame, text="Gender", font=labelfont, bg=lf_bg).place(relx=0.3, rely=0.30)
+Label(left_frame, text="Date of Birth (DOB)", font=labelfont, bg=lf_bg).place(relx=0.1, rely=0.47)
+Label(left_frame, text="Department", font=labelfont, bg=lf_bg).place(relx=0.2, rely=0.55)
+Label(left_frame, text="Roll Number", font=labelfont, bg=lf_bg).place(relx=0.2, rely=0.39)
+Label(left_frame, text="Year", font=labelfont, bg=lf_bg).place(relx=0.3, rely=0.74)
+Label(left_frame, text="Semester", font=labelfont, bg=lf_bg).place(relx=0.3, rely=0.65)
+
+Entry(left_frame, width=19, textvariable=name_strvar, font=entryfont).place(x=20, rely=0.1)
+Entry(left_frame, width=19, textvariable=contact_strvar, font=entryfont).place(x=20, rely=0.18)
+Entry(left_frame, width=19, textvariable=email_strvar, font=entryfont).place(x=20, rely=0.26)
+#Entry(left_frame, width=19, textvariable=roll_strvar, font=entryfont).place(x=20, rely=0.43)
+#Entry(left_frame, width=19, textvariable=year_strvar, font=entryfont).place(x=20, rely=0.78)
+#Entry(left_frame, width=19, textvariable=semester_strvar, font=entryfont).place(x=20, rely=0.69)
+#Entry(left_frame, width=19, textvariable=department_strvar, font=entryfont).place(x=20, rely=0.60)
+
+
+OptionMenu(left_frame, gender_strvar, 'Male', "Female").place(x=45, rely=0.34, relwidth=0.5)
+
+dob = DateEntry(left_frame, font=("Arial", 12), width=10)
+dob.place(x=50, rely=0.52)
+
+OptionMenu(left_frame, department_strvar, 'MECH', 'CSE', 'EXTC', "IT").place(x=48, rely=0.60, relwidth=0.5)
+
+OptionMenu(left_frame, roll_strvar, '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', '23', '24', '25', '26', '27', '28', '29', '30', '31', '32', '33', '34', '35', '36', '37', '38', '39', '40', '41', '42', '43', '44', '45', '46', '47', '48', '49', '50', '51', '52', '53', '54', '55', '56', '57', '58', '59',  "60").place(x=48, rely=0.43, relwidth=0.5)
+
+OptionMenu(left_frame, year_strvar, 'First Year', 'Second Year', 'Third Year', "Final Year").place(x=48, rely=0.78, relwidth=0.5)
+
+OptionMenu(left_frame, semester_strvar, '1st sem', '2nd sem', '3rd sem', '4th sem', '5th sem', '6th sem', '7th sem', "8th sem").place(x=48, rely=0.69, relwidth=0.5)
+
+Button(left_frame, text='Submit and Save Record', font=labelfont, command=add_record, width=20).place(relx=0.040, rely=0.85)
+
+# Placing components in the center frame
+Button(center_frame, text='Delete Record', font=labelfont, command=remove_record, width=15).place(relx=0.1, rely=0.25)
+Button(center_frame, text='View Record', font=labelfont, command=view_record, width=15).place(relx=0.1, rely=0.35)
+Button(center_frame, text='Reset Fields', font=labelfont, command=reset_fields, width=15).place(relx=0.1, rely=0.45)
+Button(center_frame, text='Delete database', font=labelfont, command=reset_form, width=15).place(relx=0.1, rely=0.55)
+
+# Placing components in the right frame
+Label(right_frame, text='Students Records', font=headlabelfont, bg='blue', fg='LightCyan').pack(side=TOP, fill=X)
+
+tree = ttk.Treeview(right_frame, height=100, selectmode=BROWSE,
+                    columns=('Student ID', "Name", "Email Address", "Contact Number", "Gender", "Date of Birth", "Department", "Roll Number", "Year", "Semester"))
+
+X_scroller = Scrollbar(tree, orient=HORIZONTAL, command=tree.xview)
+Y_scroller = Scrollbar(tree, orient=VERTICAL, command=tree.yview)
+
+X_scroller.pack(side=BOTTOM, fill=X)
+Y_scroller.pack(side=RIGHT, fill=Y)
+
+tree.config(yscrollcommand=Y_scroller.set, xscrollcommand=X_scroller.set)
+
+tree.heading('Student ID', text='ID', anchor=CENTER)
+tree.heading('Name', text='Name', anchor=CENTER)
+tree.heading('Email Address', text='Email ID', anchor=CENTER)
+tree.heading('Contact Number', text='Phone No', anchor=CENTER)
+tree.heading('Gender', text='Gender', anchor=CENTER)
+tree.heading('Date of Birth', text='DOB', anchor=CENTER)
+tree.heading('Department', text='Department', anchor=CENTER)
+tree.heading('Roll Number', text='Roll No', anchor=CENTER)
+tree.heading('Year', text='Year', anchor=CENTER)
+tree.heading('Semester', text='Semester', anchor=CENTER)
+
+tree.column('#0', width=0, stretch=NO)
+tree.column('#1', width=40, stretch=NO)
+tree.column('#2', width=140, stretch=NO)
+tree.column('#3', width=200, stretch=NO)
+tree.column('#4', width=120, stretch=NO)
+tree.column('#5', width=100, stretch=NO)
+tree.column('#6', width=100, stretch=NO)
+tree.column('#7', width=80, stretch=NO)
+tree.column('#8', width=60, stretch=NO)
+tree.column('#9', width=80, stretch=NO)
+tree.column('#10', width=120, stretch=NO)
+
+tree.place(y=30, relwidth=1, relheight=0.9, relx=0)
+
+display_records()
+
+# Finalizing the GUI window
+main.update()
+main.mainloop()
